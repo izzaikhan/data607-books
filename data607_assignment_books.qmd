@@ -1,0 +1,123 @@
+---
+title: "DATA 607 Assignment: Working with HTML and JSON"
+author: "Izza Khan"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Introduction
+
+For this warm-up exercise, I selected three books on the subject of **data science and analytics**. I manually created the same book dataset in two different file formats: an HTML table and a JSON file. I then used R to load both files into separate data frames and compared them to confirm that they contain the same information.
+
+The three books are all relevant to this course because they focus on data wrangling, text mining, and predictive modeling.
+
+## Data Files
+
+This project uses two hand-built files:
+
+- `books.html`
+- `books.json`
+
+For local knitting in the same project folder, the files can be read directly by filename. If publishing to RPubs, these files should first be uploaded to a public GitHub repository, and the URLs in the optional web-based code chunk below can be updated to the raw GitHub links.
+
+BODY
+
+## Load Required Packages
+
+```{r}
+library(rvest)
+library(xml2)
+library(jsonlite)
+library(dplyr)
+library(purrr)
+```
+
+## Read the HTML File into a Data Frame
+
+```{r}
+html_df <- read_html("books.html") |>
+  html_element("table") |>
+  html_table()
+
+html_df
+```
+
+The HTML file stores the authors in one table cell as a semicolon-separated string, so I cleaned that column slightly to make it consistent with the JSON data after import.
+
+```{r}
+html_df <- html_df |>
+  mutate(
+    authors = gsub(";", ",", authors),
+    authors = gsub("\\s+", " ", authors),
+    publication_year = as.integer(publication_year)
+  )
+
+html_df
+```
+
+## Read the JSON File into a Data Frame
+
+```{r}
+json_raw <- fromJSON("books.json", simplifyDataFrame = TRUE)
+
+json_df <- as_tibble(json_raw) |>
+  mutate(
+    authors = map_chr(authors, ~ paste(.x, collapse = ", "))
+  )
+
+json_df
+```
+
+## Compare the Two Data Frames
+
+To compare the data frames fairly, I first made sure the column order and data types matched.
+
+```{r}
+html_df <- html_df |>
+  select(title, authors, publication_year, publisher, isbn, topic)
+
+json_df <- json_df |>
+  select(title, authors, publication_year, publisher, isbn, topic)
+
+identical_result <- identical(html_df, json_df)
+all_equal_result <- all.equal(html_df, json_df)
+
+identical_result
+all_equal_result
+```
+
+## Optional: Web-Hosted Version for RPubs
+
+When publishing to RPubs, local file paths will not work unless the source files are available on the web. After uploading `books.html` and `books.json` to a public GitHub repository, replace the placeholder URLs below with the raw GitHub links.
+
+```{r eval=FALSE}
+html_url <- "https://raw.githubusercontent.com/your-username/your-repo/main/books.html"
+json_url <- "https://raw.githubusercontent.com/your-username/your-repo/main/books.json"
+
+html_df_web <- read_html(html_url) |>
+  html_element("table") |>
+  html_table() |>
+  mutate(
+    authors = gsub(";", ",", authors),
+    authors = gsub("\\s+", " ", authors),
+    publication_year = as.integer(publication_year)
+  )
+
+json_df_web <- fromJSON(json_url, simplifyDataFrame = TRUE) |>
+  as_tibble() |>
+  mutate(
+    authors = map_chr(authors, ~ paste(.x, collapse = ", "))
+  )
+
+identical(html_df_web, json_df_web)
+```
+
+## Conclusion
+
+This exercise showed how the same dataset can be represented in both HTML and JSON formats and then loaded into R for analysis. After a small amount of cleaning—mainly standardizing the `authors` field—the two data frames matched. This demonstrates that both file types can serve as usable sources for downstream data acquisition work in R.
